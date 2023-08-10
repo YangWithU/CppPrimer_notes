@@ -163,5 +163,62 @@ int main() {
 }
 ```
 
+采用GDB进行调试观察：
+
+```gdb
+Breakpoint 1, main () at */C++primer/main.cpp:33
+33     Obj a2 = std::move(a1);
+(gdb) print a1.s
+$1 = "hello"
+(gdb) print a1.i
+$2 = 114514
+(gdb) print a1.v
+$3 = std::vector of length 7, capacity 7 = {1, 9, 1, 9, 8, 1, 0}
+
+(gdb) continue
+Continuing.
+
+Breakpoint 2, main () at */C++primer/main.cpp:34
+34  }
+(gdb) print a1.v
+$5 = std::vector of length 0, capacity 0
+(gdb) print a1.i
+$6 = 114514
+(gdb) print a1.s
+$7 = ""
+```
+
+与此前描述相符，Q.E.D
+
 ## 移动构造函数
+
+```c++
+struct Obj {
+public:
+    Obj(Obj &&rhs) noexcept;
+};
+```
+
+首先，抛开自定义移动构造函数，在：
+
++ 自行定义(显式定义)析构函数，或拷贝赋值运算符，或拷贝构造函数
++ 删除或不可可访问移动构造函数，移动赋值运算符
+
+以上两种情况时需要手动自定义移动构造函数，其余情况编译器会自动生成移动构造函数
+
+```c++
+struct Obj {
+public:
+    Obj() = default;
+    Obj(const Obj &rhs) { std::cout << "copy ctor called!\n"; }
+};
+
+int main() {
+    Obj a1;
+    Obj a2 = std::move(a1);
+}
+```
+
+上述情况中，我们自定义了拷贝构造函数，合成移动构造函数被标记为删除，编译器不会生成
+因此，我们在 `move` 时，发生了右值转换成 `const` 左值引用的情况
 
