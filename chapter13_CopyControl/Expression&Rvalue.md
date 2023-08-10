@@ -121,4 +121,47 @@ main:                                   # @main
 + 为控制临时量生命周期提供解决方案
 + 优化拷贝构造函数，如 `string s("hello world");`
 
-未完待续
+## 移动语义
+
+移动语义，即通过使用 std::move 来转移对象的数据所有权的过程
+可以说，我们将被移动对象当成右值，将其内部的数据所有权转移到新变量之中。
+被移动后，原变量失去所有权，此时开始不应访问原变量，否则UB
+
+该操作本质**将源对象的内部数据指针转移到目标对象**
+
+该操作一般步骤有三：
+
+1. 目标对象准备接收数据。目标对象释放其当前拥有的资源，为新数据腾出空间
+2. 移动构造函数的调用。移动构造函数从源对象中获取数据，并将其转移到目标对象中
+3. 源对象的状态变为有效但未指定。
+
+> 例外： `Trivially Copyable Type` 对象
+>
+> 该类型对象可以通过简单的位拷贝进行复制。
+> 当该对象被移动时，其内部的Trivially Copyable成员将被直接拷贝到目标对象中，而不会改变其值
+> 移动操作只是简单地将其值从源对象复制到目标对象，而不会对其进行其他的构造或析构操作
+>  
+> 比如下面例子中的 `int` 成员，就属于 `Trivially Copyable Type`
+> 但并非所有类型都是 `Trivially Copyable Type`
+> 例如，如果一个类包含指针成员或包含了自定义的构造函数、析构函数、拷贝构造函数或移动构造函数等，那么它就不再是Trivially Copyable Type，
+> 此时移动操作将涉及到更复杂的操作
+
+```c++
+struct Obj {
+public:
+    int i; // Trivially Copyable Type
+    std::string s; // contains move ctor
+    std::vector<int> v; // also contains move ctor
+};
+
+int main() {
+    Obj a1;
+    a1.s = "hello";
+    a1.i = 114514;
+    a1.v = {1, 9, 1, 9, 8, 1, 0};
+    Obj a2 = std::move(a1);
+}
+```
+
+## 移动构造函数
+

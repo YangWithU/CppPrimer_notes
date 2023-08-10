@@ -167,6 +167,7 @@ public:
 
 
     HasPtr& operator=(const HasPtr& other) {
+        if(*this == &other) return *this;
         ++*other.use;
         if(--*use == 0) {
             delete ps;
