@@ -272,4 +272,60 @@ struct Obj {
 在设计 `Folder` 的过程中，我们从小到大，将基础操作包裹进操作单元：函数
 不同层级的函数有不同的类别：最底层的加 `inline` 优化，次底层的作为类的 `private` 成员函数来管理类成员，最表层的负责调用和创设。
 
-启示：设计类时最好头脑清楚，利用思维导图分析清楚
+启示：设计类时最好头脑清楚，利用思维导图分析清楚要实现的函数，要针对类成员做出的操作对函数进行分类
+
+## 一点内存分配与对象构造小知识
+
+### 内存分配
+
+首先，在对象产生前，我们会用 `::operator new` 为其分配所需的内存。
+这种operator new的形式与直接 `new` 并不相同。`new` 会同时为对象分配内存和初始化，
+但我们 `::operator new` 则仅仅为对象分配内存
+
+```c++
+void *mem = ::operator new(sizeof(int) * 114);
+```
+
+诸如：`allocate()` 这样的函数在底层就利用了 `::operator new`
+`::operator new` 的底层则使用 `malloc` 函数，继承自C语言。
+
+### 对象构造
+
+之后，我们需要在已经分配的内存上面构造对象，此时我们就会用到 **`placement new`**
+
+```c++
+// new (position) [Object ctor]
+A *obj = new (mem) A(514);
+```
+
+如上，我们使用 `placement new` 在 `mem` 位置，调用对象构造函数 `A(514)` 进行对象构造。
+
+诸如： `uninitialized_fill`，`uninitialized_fill_n`，`uninitialized_copy`，`alloc.construct()`
+这样的标准库中用于构造的函数在底层都利用了 `placement new`
+
+```c++
+class A {
+public:
+    A(int v) : my_value(v) {
+        std::cout << "ctor called. Value: " << my_value << '\n';
+    }
+    ~A() {
+        std::cout << "dtor called.\n";
+    }
+private:
+    int my_value;
+};
+
+int main() {
+    void *mem = ::operator new(sizeof(int) * 114);
+    // 在预先分配的内存中调用构造函数
+    A *obj = new (mem) A(514);
+
+    // 手动调用析构函数
+    obj->~A();
+
+    // 释放预先分配的内存
+    ::operator delete(mem);
+}
+```
+
